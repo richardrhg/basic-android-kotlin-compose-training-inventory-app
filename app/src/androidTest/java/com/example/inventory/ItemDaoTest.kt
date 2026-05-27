@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -44,10 +45,7 @@ class ItemDaoTest {
     @Before
     fun createDb() {
         val context: Context = ApplicationProvider.getApplicationContext()
-        // Using an in-memory database because the information stored here disappears when the
-        // process is killed.
         inventoryDatabase = Room.inMemoryDatabaseBuilder(context, InventoryDatabase::class.java)
-            // Allowing main thread queries, just for testing.
             .allowMainThreadQueries()
             .build()
         itemDao = inventoryDatabase.itemDao()
@@ -76,7 +74,6 @@ class ItemDaoTest {
         assertEquals(allItems[1], item2)
     }
 
-
     @Test
     @Throws(Exception::class)
     fun daoGetItem_returnsItemFromDB() = runBlocking {
@@ -101,10 +98,38 @@ class ItemDaoTest {
         addTwoItemsToDb()
         itemDao.update(Item(1, "Apples", 15.0, 25))
         itemDao.update(Item(2, "Bananas", 5.0, 50))
-
         val allItems = itemDao.getAllItems().first()
         assertEquals(allItems[0], Item(1, "Apples", 15.0, 25))
         assertEquals(allItems[1], Item(2, "Bananas", 5.0, 50))
+    }
+
+    // 要求 1：新增重複 ID 測試
+    @Test
+    @Throws(Exception::class)
+    fun insertDuplicateId_keepsOriginalItem() = runBlocking {
+        itemDao.insert(item1)
+        val duplicateItem = Item(id = 1, name = "Different Apple", price = 99.0, quantity = 999)
+        itemDao.insert(duplicateItem)
+        val allItems = itemDao.getAllItems().first()
+        assertEquals(1, allItems.size)
+        assertEquals(item1, allItems[0])
+        assertEquals("Apples", allItems[0].name)
+        assertEquals(10.0, allItems[0].price, 0.001)
+        assertEquals(20, allItems[0].quantity)
+    }
+
+    // 要求 3：自動化新增學號資料並驗證
+    @Test
+    @Throws(Exception::class)
+    fun insertStudentIdItem_verifyStoredInDatabase() = runBlocking {
+        val studentItem = Item(id = 0, name = "B11330218", price = 100.0, quantity = 10)
+        itemDao.insert(studentItem)
+        val allItems = itemDao.getAllItems().first()
+        val insertedItem = allItems.find { it.name == "B11330218" }
+        assertNotNull("Item with name B11330218 should exist in DB", insertedItem)
+        assertEquals("B11330218", insertedItem!!.name)
+        assertEquals(100.0, insertedItem.price, 0.001)
+        assertEquals(10, insertedItem.quantity)
     }
 
     private suspend fun addOneItemToDb() {
