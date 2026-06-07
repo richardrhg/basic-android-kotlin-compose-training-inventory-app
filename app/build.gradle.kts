@@ -88,4 +88,5 @@ dependencies {
 
     // HW3 要求 2：ViewModel Unit Test 的 coroutine 測試支援
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrain
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+}
